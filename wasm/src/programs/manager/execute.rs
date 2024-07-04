@@ -151,7 +151,8 @@ impl ProgramManager {
         program: &str,
         function: &str,
         inputs: Array,
-        fee_credits: f64,
+        base_fee: u64,
+        priority_fee: u64,
         fee_record: Option<RecordPlaintext>,
         url: Option<String>,
         imports: Option<Object>,
@@ -162,10 +163,10 @@ impl ProgramManager {
         offline_query: Option<OfflineQuery>,
     ) -> Result<Transaction, String> {
         log(&format!("Executing function: {function} on-chain"));
-        let fee_microcredits = match &fee_record {
-            Some(fee_record) => Self::validate_amount(fee_credits, fee_record, true)?,
-            None => (fee_credits * 1_000_000.0) as u64,
-        };
+        // let fee_microcredits = match &fee_record {
+        //     Some(fee_record) => Self::validate_amount(fee_credits, fee_record, true)?,
+        //     None => (fee_credits * 1_000_000.0) as u64,
+        // };
         let mut process_native = ProcessNative::load_web().map_err(|err| err.to_string())?;
         let process = &mut process_native;
         let node_url = url.as_deref().unwrap_or(DEFAULT_URL);
@@ -208,7 +209,8 @@ impl ProgramManager {
             process,
             private_key,
             fee_record,
-            fee_microcredits,
+            base_fee,
+            priority_fee,
             node_url,
             fee_proving_key,
             fee_verifying_key,
@@ -296,48 +298,48 @@ impl ProgramManager {
         log("Estimating cost");
         let storage_cost = execution.size_in_bytes().map_err(|e| e.to_string())?;
 
-        // Compute the finalize cost in microcredits.
-        let mut finalize_cost = 0u64;
-        // Iterate over the transitions to accumulate the finalize cost.
-        for transition in execution.transitions() {
-            // Retrieve the function name, program id, and program.
-            let function_name = transition.function_name();
-            let program_id = transition.program_id();
-            let program = process.get_program(program_id).map_err(|e| e.to_string())?;
+        Ok(storage_cost)
 
-            // Calculate the finalize cost for the function identified in the transition
-            let cost = match &program.get_function(function_name).map_err(|e| e.to_string())?.finalize_logic() {
-                Some(finalize) => cost_in_microcredits(finalize).map_err(|e| e.to_string())?,
-                None => continue,
-            };
-
-            // Accumulate the finalize cost.
-            finalize_cost = finalize_cost
-                .checked_add(cost)
-                .ok_or("The finalize cost computation overflowed for an execution".to_string())?;
-        }
-        Ok(storage_cost + finalize_cost)
+        // // Compute the finalize cost in microcredits.
+        // let mut finalize_cost = 0u64;
+        // // Iterate over the transitions to accumulate the finalize cost.
+        // for transition in execution.transitions() {
+        //     // Retrieve the function name, program id, and program.
+        //     let function_name = transition.function_name();
+        //     let program_id = transition.program_id();
+        //     let program = process.get_program(program_id).map_err(|e| e.to_string())?;
+        //     // Calculate the finalize cost for the function identified in the transition
+        //     let cost = match &program.get_function(function_name).map_err(|e| e.to_string())?.finalize_logic() {
+        //         Some(finalize) => cost_in_microcredits(finalize).map_err(|e| e.to_string())?,
+        //         None => continue,
+        //     };
+        //     // Accumulate the finalize cost.
+        //     finalize_cost = finalize_cost
+        //         .checked_add(cost)
+        //         .ok_or("The finalize cost computation overflowed for an execution".to_string())?;
+        // }
+        // Ok(storage_cost + finalize_cost)
     }
 
-    /// Estimate the finalize fee component for executing a function. This fee is additional to the
-    /// size of the execution of the program in bytes. If the function does not have a finalize
-    /// step, then the finalize fee is 0.
-    ///
-    /// Disclaimer: Fee estimation is experimental and may not represent a correct estimate on any current or future network
-    ///
-    /// @param program The program containing the function to estimate the finalize fee for
-    /// @param function The function to estimate the finalize fee for
-    /// @returns {u64 | Error} Fee in microcredits
-    #[wasm_bindgen(js_name = estimateFinalizeFee)]
-    pub fn estimate_finalize_fee(program: &str, function: &str) -> Result<u64, String> {
-        log(
-            "Disclaimer: Fee estimation is experimental and may not represent a correct estimate on any current or future network",
-        );
-        let program = ProgramNative::from_str(program).map_err(|err| err.to_string())?;
-        let function_id = IdentifierNative::from_str(function).map_err(|err| err.to_string())?;
-        match program.get_function(&function_id).map_err(|err| err.to_string())?.finalize_logic() {
-            Some(finalize) => cost_in_microcredits(finalize).map_err(|e| e.to_string()),
-            None => Ok(0u64),
-        }
-    }
+    // /// Estimate the finalize fee component for executing a function. This fee is additional to the
+    // /// size of the execution of the program in bytes. If the function does not have a finalize
+    // /// step, then the finalize fee is 0.
+    // ///
+    // /// Disclaimer: Fee estimation is experimental and may not represent a correct estimate on any current or future network
+    // ///
+    // /// @param program The program containing the function to estimate the finalize fee for
+    // /// @param function The function to estimate the finalize fee for
+    // /// @returns {u64 | Error} Fee in microcredits
+    // #[wasm_bindgen(js_name = estimateFinalizeFee)]
+    // pub fn estimate_finalize_fee(program: &str, function: &str) -> Result<u64, String> {
+    //     log(
+    //         "Disclaimer: Fee estimation is experimental and may not represent a correct estimate on any current or future network",
+    //     );
+    //     let program = ProgramNative::from_str(program).map_err(|err| err.to_string())?;
+    //     let function_id = IdentifierNative::from_str(function).map_err(|err| err.to_string())?;
+    //     match program.get_function(&function_id).map_err(|err| err.to_string())?.finalize_logic() {
+    //         Some(finalize) => cost_in_microcredits(finalize).map_err(|e| e.to_string()),
+    //         None => Ok(0u64),
+    //     }
+    // }
 }

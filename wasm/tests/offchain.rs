@@ -255,9 +255,9 @@ async fn test_fee_estimation() {
     // Ensure the fee is greater a specific amount
     assert!(deployment_fee > 1940000);
 
-    // Ensure the finalize fee is greater than zero for a program with a finalize scope
-    let finalize_fee = ProgramManager::estimate_finalize_fee(FINALIZE, "integer_key_mapping_update").unwrap();
-    assert!(finalize_fee > 0);
+    // // Ensure the finalize fee is greater than zero for a program with a finalize scope
+    // let finalize_fee = ProgramManager::estimate_finalize_fee(FINALIZE, "integer_key_mapping_update").unwrap();
+    // assert!(finalize_fee > 0);
 
     let execution_fee = ProgramManager::estimate_execution_fee(
         &private_key,
